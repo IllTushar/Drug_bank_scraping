@@ -48,7 +48,46 @@ def web_scraping():
 
 
 def drug_and_interactions():
-    pass
+    drug_name_list = []
+    drug_interaction_list = []
+    drug_url_list = []
+
+    # Request the page content
+    url = "https://go.drugbank.com/drugs/DB01048"
+    data_rq = rq.get(url)
+    soup = BeautifulSoup(data_rq.text, "html.parser")
+    title = soup.title.text
+    splits_title = title.split(":")
+
+    tables = soup.find(id="drug-interactions-table")
+    # Ensure there are enough tables found
+    if tables:
+        tr_tags = tables.find_all("tr")
+        print(len(tr_tags))
+        # Loop through each <tr> tag
+        for tr_tag in tr_tags:
+            # Extract all <td> tags within the current <tr> tag
+            td_tags = tr_tag.find_all("td")
+
+            # Extract text from the first <td> tag (which contains drug names)
+            if td_tags:
+                drug_name = td_tags[0].text.strip()
+                drug_name_list.append(drug_name)
+                drug_interaction = td_tags[1].text.strip()
+                drug_interaction_list.append(drug_interaction)
+
+            # Extract href attribute from each <a> tag within the <td> tags
+            for td in td_tags:
+                a_tags = td.find_all("a")
+                for a_tag in a_tags:
+                    row_data = a_tag.get("href")
+                    url = "https://go.drugbank.com" + row_data
+                    drug_url_list.append(url)
+
+        data_frame = pd.DataFrame({"Drug": drug_name_list, "Interaction": drug_interaction_list, "URL": drug_url_list})
+        data_frame.to_csv(fr"C:\Users\gtush\Desktop\SayaCsv\{splits_title[0]}InteractionData.csv")
+    else:
+        print("Table with id 'drug-interactions-table' not found.")
 
 
 if __name__ == '__main__':

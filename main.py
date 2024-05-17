@@ -53,8 +53,8 @@ def drug_and_interactions():
     drug_url_list = []
 
     # Request the page content
-    url = "https://go.drugbank.com/drugs/DB01048"
-    data_rq = rq.get(url)
+    URL = "https://go.drugbank.com/drugs/DB01048"
+    data_rq = rq.get(URL)
     soup = BeautifulSoup(data_rq.text, "html.parser")
     title = soup.title.text
     splits_title = title.split(":")
@@ -84,7 +84,8 @@ def drug_and_interactions():
                     url = "https://go.drugbank.com" + row_data
                     drug_url_list.append(url)
 
-        data_frame = pd.DataFrame({"Drug": drug_name_list, "Interaction": drug_interaction_list, "URL": drug_url_list})
+        data_frame = pd.DataFrame(
+            {"Drug": drug_name_list, "Interaction": drug_interaction_list, "URL": drug_url_list, "Base Drug": URL})
         data_frame.to_csv(fr"C:\Users\gtush\Desktop\SayaCsv\{splits_title[0]}InteractionData.csv")
     else:
         print("Table with id 'drug-interactions-table' not found.")

@@ -46,9 +46,10 @@ def automation(assets, email, password):
     login = assets.single_element_find(xpath, login_x_path)
     login.click()
 
-    drug_list = ["Abacavir hydroxyacetate", "Abacavir"]
+    read_csv_file_for_drug_name = pd.read_csv(r"C:\Users\gtush\Desktop\SayaCsv\DrugBankData.csv")
+    drug_list = read_csv_file_for_drug_name['Name']
 
-    for drug in drug_list:
+    for drug in drug_list[:3]:
         time.sleep(5)
         value = search_drug(assets, xpath, drug_data_list, drug)
         csv_value_list.append(value)
@@ -114,6 +115,10 @@ def search_drug(assets, xpath, drug_data_list, drug):
     search_button = assets.single_element_find(xpath, search_button_x_path)
     search_button.click()
 
+    # Get URL End point
+    end_point_x_path = "//dd[contains(@class, 'col-xl-4 col-md-9 col-sm-8') and starts-with(text(), 'DB')]"
+    end_point = assets.single_element_find(xpath, end_point_x_path)
+    BaseUrl = end_point.text
     # Interaction
     click_x_path = '//*[@id = "interactions-sidebar-header"]'
     click_button = assets.single_element_find(xpath, click_x_path)
@@ -166,7 +171,7 @@ def search_drug(assets, xpath, drug_data_list, drug):
         for data in drug_data_list:
             for drug, interaction, url in zip(data.drug_name_list, data.drug_interaction_list, data.drug_url_list):
                 drug_data_rows.append({"Drug": drug, "Interaction": interaction, "URL": url,
-                                       "Base Drug": "https://go.drugbank.com/drugs/DB01048"})
+                                       "Base Drug": f"https://go.drugbank.com/drugs/{BaseUrl}"})
 
         csv_data = pd.DataFrame(drug_data_rows)
         return csv_data

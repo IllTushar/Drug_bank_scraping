@@ -1,7 +1,8 @@
 import pandas as pd
 from bs4 import BeautifulSoup
 import requests as rq
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException, ElementClickInterceptedException, \
+    WebDriverException
 
 from selenium.common import StaleElementReferenceException
 
@@ -18,10 +19,12 @@ drug_data_list2: List[ModelClass] = []
 
 
 def extract_last_number_from_text(text):
-    # Regular expression to find all numbers in the text
-    numbers = re.findall(r'\d+', text)
-    # Convert the found numbers to integers and return the last number
-    return int(numbers[-1]) if numbers else None
+    # Regular expression to find all numbers, including those with commas
+    numbers = re.findall(r'\d{1,3}(?:,\d{3})*|\d+', text)
+    # Remove commas and convert to integers
+    numbers = [int(number.replace(',', '')) for number in numbers]
+    # Return the last number
+    return numbers[-1] if numbers else None
 
 
 def automation(assets, email, password):
@@ -48,8 +51,10 @@ def automation(assets, email, password):
 
     read_csv_file_for_drug_name = pd.read_csv(r"C:\Users\gtush\Desktop\SayaCsv\DrugBankData.csv")
     drug_list = read_csv_file_for_drug_name['Name']
-
-    for drug in drug_list[:3]:
+    count = 0
+    for drug in drug_list[137:140]:
+        count += 1
+        print(f"drug name: {drug}, index is: {count}")
         time.sleep(5)
         value = search_drug(assets, xpath, drug_data_list, drug)
         csv_value_list.append(value)
@@ -146,8 +151,10 @@ def search_drug(assets, xpath, drug_data_list, drug):
 
         rows_per_page = total_entries / 100
         pages = math.ceil(rows_per_page)
+        print(f"No of pages {pages}")
 
         for l in range(1, pages + 1):
+
             time.sleep(5)
             drug_data = drug_and_interactions(assets)
             if drug_data is not None:
@@ -182,6 +189,12 @@ def search_drug(assets, xpath, drug_data_list, drug):
         # Handle the timeout exception (e.g., retrying the operation, logging the error)
     except NoSuchElementException:
         print("Element not found.")
+        return None
+    except ElementClickInterceptedException:
+        print("No Click able element")
+        return None
+    except WebDriverException:
+        print("Web driver not found")
         return None
 
 

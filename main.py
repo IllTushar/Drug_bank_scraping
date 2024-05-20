@@ -1,6 +1,8 @@
 import pandas as pd
 from bs4 import BeautifulSoup
 import requests as rq
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
+
 from selenium.common import StaleElementReferenceException
 
 from assets.assets import Assets
@@ -9,12 +11,22 @@ from selenium.webdriver.support.ui import Select
 from Model.data_model import ModelClass
 from typing import List
 import time
+import re
+import math
 
 drug_data_list2: List[ModelClass] = []
 
 
+def extract_last_number_from_text(text):
+    # Regular expression to find all numbers in the text
+    numbers = re.findall(r'\d+', text)
+    # Convert the found numbers to integers and return the last number
+    return int(numbers[-1]) if numbers else None
+
+
 def automation(assets, email, password):
     global csv_value
+    csv_value_list = []
     drug_data_list: List[ModelClass] = []
     xpath = By.XPATH
     email_xpath = "//*[starts-with(@placeholder ,'name@example')]"
@@ -34,13 +46,24 @@ def automation(assets, email, password):
     login = assets.single_element_find(xpath, login_x_path)
     login.click()
 
-    drug_list = ["Abacavir", "Tenofovir disoproxil"]
+    drug_list = ["Abacavir hydroxyacetate", "Abacavir"]
 
     for drug in drug_list:
         time.sleep(5)
-        csv_value = search_drug(assets, xpath, drug_data_list, drug)
+        value = search_drug(assets, xpath, drug_data_list, drug)
+        if value is not None:
+            csv_value = value
+        else:
+            csv_value = None
+        csv_value_list.append(csv_value)
+    # Check if csv_value is defined before using it
+    for l in csv_value_list:
+        if l is not None:
+            if 'csv_value' in globals() and csv_value:
+                csv_value.to_csv(fr"C:\Users\gtush\Desktop\SayaCsv\InteractionData.csv", index=False)
+            else:
+                print("Data not found")
 
-    csv_value.to_csv(fr"C:\Users\gtush\Desktop\SayaCsv\InteractionData.csv", index=False)
     # Extract cookies from the browser
     cookies = assets.browser.get_cookies()
     print("Cookies:", cookies)
@@ -78,17 +101,17 @@ def drug_and_interactions(assets):
                         row_data = a_tag.get("href")
                         url = "https://go.drugbank.com" + row_data
                         drug_url_list.append(url)
-
+        return ModelClass(drug_name_list, drug_interaction_list, drug_url_list)
     else:
         print("Table with id 'drug-interactions-table' not found.")
-
-    return ModelClass(drug_name_list, drug_interaction_list, drug_url_list)
+        return None
 
 
 def search_drug(assets, xpath, drug_data_list, drug):
     # Search Bar
     search_bar_x_path = '//*[starts-with(@placeholder,"Type your search")]'
     search = assets.single_element_find(xpath, search_bar_x_path)
+    search.clear()
     search.send_keys(drug)
 
     # Search Icon
@@ -96,53 +119,72 @@ def search_drug(assets, xpath, drug_data_list, drug):
     search_button = assets.single_element_find(xpath, search_button_x_path)
     search_button.click()
 
-    # Interation
+    # Interaction
     click_x_path = '//*[@id = "interactions-sidebar-header"]'
     click_button = assets.single_element_find(xpath, click_x_path)
     click_button.click()
 
     # Row Spinner
     spinner_x_path = '//*[starts-with(@aria-controls,"drug-interactions-table")]'
-    assets.explict_wait(5, xpath, spinner_x_path)
-    assets.mouse_hover(xpath, spinner_x_path)
+    # assets.explict_wait(5, xpath, spinner_x_path)
+    try:
+        row_spinner = assets.mouse_hover(xpath, spinner_x_path)
+        if row_spinner is None:
+            return None
+        else:
+           
+            # Wait for the dropdown to be visible and interactable
+            select_x_path = '//*[@id="drug-interactions-table_length"]/label/select'
+            assets.explict_wait(5, xpath, select_x_path)
+            select_element = assets.single_element_find(xpath, select_x_path)
+            # Use the Select class to interact with the dropdown
+            select = Select(select_element)
+            select.select_by_index(4)  # Selecting the fifth option (index starts from 0)
 
-    # Wait for the dropdown to be visible and interactable
-    select_x_path = '//*[@id="drug-interactions-table_length"]/label/select'
-    assets.explict_wait(5, xpath, select_x_path)
-    select_element = assets.single_element_find(xpath, select_x_path)
+            # Entity
+            entity_x_path = '//*[@id = "drug-interactions-table_info"]'
+            assets.explict_wait(5, xpath, entity_x_path)
+            element = assets.single_element_find(xpath, entity_x_path)
+            total_entries = extract_last_number_from_text(element.text)
+            print("Total Entries:", total_entries)
 
-    # Use the Select class to interact with the dropdown
-    select = Select(select_element)
-    select.select_by_index(4)  # Selecting the fifth option (index starts from 0)
+            rows_per_page = 100
+            pages = math.ceil(total_entries / rows_per_page)
 
-    row = 8
-    for l in range(1, row):
+            for l in range(1, pages + 1):
+                drug_data = drug_and_interactions(assets)
+                if drug_data is not None:
+                    drug_data_list.append(drug_data)
 
-        select_x_path_next_page = "//*[@id = 'drug-interactions-table_next']"
-        time.sleep(5)
-        drug_data = drug_and_interactions(assets)
-        drug_data_list.append(drug_data)
+                select_x_path_next_page = "//*[@id = 'drug-interactions-table_next']"
 
-        # Wait for the next page button to be clickable
-        try:
-            assets.explict_wait(5, xpath, select_x_path_next_page)
-            next_page_button = assets.wait_until_element_not_click_able(xpath, select_x_path_next_page)
-            next_page_button.click()
-        except StaleElementReferenceException:
-            # Handle stale element reference exception
-            print("Stale element reference exception occurred. Retrying...")
-            next_page_button = assets.wait_until_element_not_click_able(xpath, select_x_path_next_page)
-            next_page_button.click()
-    print(len(drug_data_list))
-    drug_data_rows = []
-    for data in drug_data_list:
-        for drug, interaction, url in zip(data.drug_name_list, data.drug_interaction_list, data.drug_url_list):
-            drug_data_rows.append({"Drug": drug, "Interaction": interaction, "URL": url,
-                                   "Base Drug": "https://go.drugbank.com/drugs/DB01048"})
+                # Wait for the next page button to be clickable
+                try:
+                    assets.explict_wait(5, xpath, select_x_path_next_page)
+                    next_page_button = assets.single_element_find(xpath, select_x_path_next_page)
+                    next_page_button.click()
+                except StaleElementReferenceException:
+                    print("Stale element reference exception occurred. Retrying...")
+                    assets.explict_wait(5, xpath, select_x_path_next_page)
+                    next_page_button = assets.single_element_find(xpath, select_x_path_next_page)
+                    next_page_button.click()
 
-    csv_data = pd.DataFrame(drug_data_rows)
-    return csv_data
+            print(len(drug_data_list))
+            drug_data_rows = []
+            for data in drug_data_list:
+                for drug, interaction, url in zip(data.drug_name_list, data.drug_interaction_list, data.drug_url_list):
+                    drug_data_rows.append({"Drug": drug, "Interaction": interaction, "URL": url,
+                                           "Base Drug": "https://go.drugbank.com/drugs/DB01048"})
 
+            csv_data = pd.DataFrame(drug_data_rows)
+            return csv_data
+    except TimeoutException:
+        print("Timeout occurred while waiting for the element to be clickable.")
+        return None
+        # Handle the timeout exception (e.g., retrying the operation, logging the error)
+    except NoSuchElementException:
+        print("Element not found.")
+        return None
 
 
 def web_scraping():

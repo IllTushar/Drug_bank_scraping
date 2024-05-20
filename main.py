@@ -52,7 +52,7 @@ def automation(assets, email, password):
     read_csv_file_for_drug_name = pd.read_csv(r"C:\Users\gtush\Desktop\SayaCsv\DrugBankData.csv")
     drug_list = read_csv_file_for_drug_name['Name']
     count = 0
-    for drug in drug_list[137:140]:
+    for drug in drug_list:
         count += 1
         print(f"drug name: {drug}, index is: {count}")
         time.sleep(5)

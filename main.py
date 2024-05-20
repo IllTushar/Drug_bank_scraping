@@ -1,6 +1,148 @@
 import pandas as pd
 from bs4 import BeautifulSoup
 import requests as rq
+from selenium.common import StaleElementReferenceException
+
+from assets.assets import Assets
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import Select
+from Model.data_model import ModelClass
+from typing import List
+import time
+
+drug_data_list2: List[ModelClass] = []
+
+
+def automation(assets, email, password):
+    global csv_value
+    drug_data_list: List[ModelClass] = []
+    xpath = By.XPATH
+    email_xpath = "//*[starts-with(@placeholder ,'name@example')]"
+    assets.explict_wait(5, xpath, email_xpath)
+
+    # Email
+    user_email = assets.single_element_find(xpath, email_xpath)
+    user_email.send_keys(email)
+
+    # Password
+    password_x_path = "//*[@type = 'password']"
+    user_password = assets.single_element_find(xpath, password_x_path)
+    user_password.send_keys(password)
+
+    # Login
+    login_x_path = '//*[@data-disable-with ="Log in"]'
+    login = assets.single_element_find(xpath, login_x_path)
+    login.click()
+
+    drug_list = ["Abacavir", "Tenofovir disoproxil"]
+
+    for drug in drug_list:
+        time.sleep(5)
+        csv_value = search_drug(assets, xpath, drug_data_list, drug)
+
+    csv_value.to_csv(fr"C:\Users\gtush\Desktop\SayaCsv\InteractionData.csv", index=False)
+    # Extract cookies from the browser
+    cookies = assets.browser.get_cookies()
+    print("Cookies:", cookies)
+
+
+def drug_and_interactions(assets):
+    drug_name_list = []
+    drug_interaction_list = []
+    drug_url_list = []
+
+    soup = BeautifulSoup(assets.browser.page_source, "html.parser")
+    tables = soup.find(id="drug-interactions-table")
+
+    # Ensure there are enough tables found
+    if tables:
+        tbody = tables.find('tbody')
+        tr_tags = tbody.find_all("tr")
+
+        # Loop through each <tr> tag
+        for tr_tag in tr_tags:
+            # Extract all <td> tags within the current <tr> tag
+            td_tags = tr_tag.find_all("td")
+
+            # Extract text from the <td> tags
+            if td_tags:
+                drug_name = td_tags[0].text.strip()
+                drug_name_list.append(drug_name)
+                drug_interaction = td_tags[1].text.strip()
+                drug_interaction_list.append(drug_interaction)
+
+                # Extract href attribute from each <a> tag within the <td> tags
+                for td in td_tags:
+                    a_tags = td.find_all("a")
+                    for a_tag in a_tags:
+                        row_data = a_tag.get("href")
+                        url = "https://go.drugbank.com" + row_data
+                        drug_url_list.append(url)
+
+    else:
+        print("Table with id 'drug-interactions-table' not found.")
+
+    return ModelClass(drug_name_list, drug_interaction_list, drug_url_list)
+
+
+def search_drug(assets, xpath, drug_data_list, drug):
+    # Search Bar
+    search_bar_x_path = '//*[starts-with(@placeholder,"Type your search")]'
+    search = assets.single_element_find(xpath, search_bar_x_path)
+    search.send_keys(drug)
+
+    # Search Icon
+    search_button_x_path = '//*[starts-with(@class,"search-query-button")]'
+    search_button = assets.single_element_find(xpath, search_button_x_path)
+    search_button.click()
+
+    # Interation
+    click_x_path = '//*[@id = "interactions-sidebar-header"]'
+    click_button = assets.single_element_find(xpath, click_x_path)
+    click_button.click()
+
+    # Row Spinner
+    spinner_x_path = '//*[starts-with(@aria-controls,"drug-interactions-table")]'
+    assets.explict_wait(5, xpath, spinner_x_path)
+    assets.mouse_hover(xpath, spinner_x_path)
+
+    # Wait for the dropdown to be visible and interactable
+    select_x_path = '//*[@id="drug-interactions-table_length"]/label/select'
+    assets.explict_wait(5, xpath, select_x_path)
+    select_element = assets.single_element_find(xpath, select_x_path)
+
+    # Use the Select class to interact with the dropdown
+    select = Select(select_element)
+    select.select_by_index(4)  # Selecting the fifth option (index starts from 0)
+
+    row = 8
+    for l in range(1, row):
+
+        select_x_path_next_page = "//*[@id = 'drug-interactions-table_next']"
+        time.sleep(5)
+        drug_data = drug_and_interactions(assets)
+        drug_data_list.append(drug_data)
+
+        # Wait for the next page button to be clickable
+        try:
+            assets.explict_wait(5, xpath, select_x_path_next_page)
+            next_page_button = assets.wait_until_element_not_click_able(xpath, select_x_path_next_page)
+            next_page_button.click()
+        except StaleElementReferenceException:
+            # Handle stale element reference exception
+            print("Stale element reference exception occurred. Retrying...")
+            next_page_button = assets.wait_until_element_not_click_able(xpath, select_x_path_next_page)
+            next_page_button.click()
+    print(len(drug_data_list))
+    drug_data_rows = []
+    for data in drug_data_list:
+        for drug, interaction, url in zip(data.drug_name_list, data.drug_interaction_list, data.drug_url_list):
+            drug_data_rows.append({"Drug": drug, "Interaction": interaction, "URL": url,
+                                   "Base Drug": "https://go.drugbank.com/drugs/DB01048"})
+
+    csv_data = pd.DataFrame(drug_data_rows)
+    return csv_data
+
 
 
 def web_scraping():
@@ -42,55 +184,14 @@ def web_scraping():
             drug_category) == len(drug_url)):
         raise ValueError("All arrays must be of the same length")
 
-    data_frame = pd.DataFrame({"Name": drug_name_list, "Description": drug_description_list, "Drug Weight": drug_weight,
-                               "Drug Category": drug_category, "Drug URL": drug_url})
+    data_frame = pd.DataFrame(
+        {"Name": drug_name_list, "Description": drug_description_list, "Drug Weight": drug_weight,
+         "Drug Category": drug_category, "Drug URL": drug_url})
     data_frame.to_csv(r"C:\Users\gtush\Desktop\SayaCsv\DrugBankData.csv", index=False)
-
-
-def drug_and_interactions():
-    drug_name_list = []
-    drug_interaction_list = []
-    drug_url_list = []
-
-    # Request the page content
-    URL = "https://go.drugbank.com/drugs/DB01048"
-    data_rq = rq.get(URL)
-    soup = BeautifulSoup(data_rq.text, "html.parser")
-    title = soup.title.text
-    splits_title = title.split(":")
-
-    tables = soup.find(id="drug-interactions-table")
-    # Ensure there are enough tables found
-    if tables:
-        tr_tags = tables.find_all("tr")
-        print(len(tr_tags))
-        # Loop through each <tr> tag
-        for tr_tag in tr_tags:
-            # Extract all <td> tags within the current <tr> tag
-            td_tags = tr_tag.find_all("td")
-
-            # Extract text from the first <td> tag (which contains drug names)
-            if td_tags:
-                drug_name = td_tags[0].text.strip()
-                drug_name_list.append(drug_name)
-                drug_interaction = td_tags[1].text.strip()
-                drug_interaction_list.append(drug_interaction)
-
-            # Extract href attribute from each <a> tag within the <td> tags
-            for td in td_tags:
-                a_tags = td.find_all("a")
-                for a_tag in a_tags:
-                    row_data = a_tag.get("href")
-                    url = "https://go.drugbank.com" + row_data
-                    drug_url_list.append(url)
-
-        data_frame = pd.DataFrame(
-            {"Drug": drug_name_list, "Interaction": drug_interaction_list, "URL": drug_url_list, "Base Drug": URL})
-        data_frame.to_csv(fr"C:\Users\gtush\Desktop\SayaCsv\{splits_title[0]}InteractionData.csv")
-    else:
-        print("Table with id 'drug-interactions-table' not found.")
 
 
 if __name__ == '__main__':
     # web_scraping()
-    drug_and_interactions()
+    selenuim_assets = Assets()
+    selenuim_assets.url()
+    automation(selenuim_assets, "gtushar697@gmail.com", "Tushar@12345")

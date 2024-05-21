@@ -16,7 +16,7 @@ import re
 import math
 
 drug_data_list2: List[ModelClass] = []
-
+csv_value_list = []
 
 def extract_last_number_from_text(text):
     # Regular expression to find all numbers, including those with commas
@@ -29,7 +29,7 @@ def extract_last_number_from_text(text):
 
 def automation(assets, email, password):
     global csv_value
-    csv_value_list = []
+
     drug_data_list: List[ModelClass] = []
     xpath = By.XPATH
     email_xpath = "//*[starts-with(@placeholder ,'name@example')]"

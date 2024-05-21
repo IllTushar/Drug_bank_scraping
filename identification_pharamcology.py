@@ -133,10 +133,12 @@ def search_drug(assets, xpath, drug_data_list, drug):
         assets.explict_wait(5, xpath, toxicity_x_path)
         toxicity = assets.single_element_find(xpath, toxicity_x_path).text
 
+        # Create Model Class Object
         model_class = Model(drug_title, generic, type_drug, background, f"https://go.drugbank.com/drugs/{base_url}",
                             indication,
                             pharmacodynamics, mechanism, absorption, half_life, toxicity)
         scrap_data_list.append(model_class)
+
         for data in drug_data_list:
             drug_data_rows.append(
                 {"Title": data.drug_title, "Generic Name": data.generic, "Type": data.type_drug,

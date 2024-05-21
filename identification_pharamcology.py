@@ -8,7 +8,6 @@ from selenium.common import StaleElementReferenceException
 from assets.assets import Assets
 from selenium.webdriver.common.by import By
 
-from typing import List
 import time
 
 from Model.identification_pharamcology_model import Model

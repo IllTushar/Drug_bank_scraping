@@ -13,9 +13,7 @@ import time
 
 from Model.identification_pharamcology_model import Model
 
-scrap_data_list: List[Model] = []
-drug_data_rows = []
-csv_value_list = []
+result_list = []
 
 
 def automation(assets, email, password):
@@ -41,26 +39,31 @@ def automation(assets, email, password):
     drug_list = read_csv_file_for_drug_name['Name']
 
     count = 0
-    for drug in drug_list:
+    # Iterate over the first 10 drugs in the drug list
+    for drug in drug_list[:5]:
         count += 1
-        print(f"drug name: {drug}, index is: {count}")
+        print(f"Drug name: {drug}, index is: {count}")
         time.sleep(5)
-        value = search_drug(assets, xpath, scrap_data_list, drug)
-        csv_value_list.append(value)
-
-    # Check if csv_value is defined and not empty before using it
-    for csv_value in csv_value_list:
-        if csv_value is not None and not csv_value.empty:
-            csv_value.to_csv(fr"C:\Users\gtush\Desktop\SayaCsv\FormalData.csv", index=False)
+        value = search_drug(assets, xpath, drug)
+        print(value)
+        if value is not None:
+            result_list.append(value)
         else:
             print("Data not found")
+        # Concatenate all the results and write to CSV
+    if result_list:
+        combined_df = pd.concat(result_list, ignore_index=True)
+        combined_df.to_csv(r"C:\Users\gtush\Desktop\SayaCsv\FormalData.csv", index=False)
+    else:
+        print("No valid data found to save to CSV.")
 
+    print("Results:", combined_df if result_list else "No results")
     # Extract cookies from the browser
     cookies = assets.browser.get_cookies()
     print("Cookies:", cookies)
 
 
-def search_drug(assets, xpath, drug_data_list, drug):
+def search_drug(assets, xpath, drug):
     # Search Bar
     search_bar_x_path = '//*[starts-with(@placeholder,"Type your search")]'
     search = assets.single_element_find(xpath, search_bar_x_path)
@@ -137,17 +140,20 @@ def search_drug(assets, xpath, drug_data_list, drug):
         model_class = Model(drug_title, generic, type_drug, background, f"https://go.drugbank.com/drugs/{base_url}",
                             indication,
                             pharmacodynamics, mechanism, absorption, half_life, toxicity)
-        scrap_data_list.append(model_class)
-
-        for data in drug_data_list:
-            drug_data_rows.append(
-                {"Title": data.drug_title, "Generic Name": data.generic, "Type": data.type_drug,
-                 "Background": data.background,
-                 "url": data.base_url, "Indication": data.indication, "Pharmacodynamics": data.pharamacodynamics,
-                 "Mechanism": data.mechanism,
-                 "Absorption": data.absorption, "Half-life": data.half_life, "Toxicity": data.toxicity})
-
-        csv_data = pd.DataFrame(drug_data_rows)
+        # Create DataFrame from the model_class object
+        csv_data = pd.DataFrame([{
+            "Title": model_class.get_drug_title,
+            "Generic Name": model_class.get_generic,
+            "Type": model_class.get_type_drug,
+            "Background": model_class.get_background,
+            "url": model_class.base_url,
+            "Indication": model_class.get_indication,
+            "Pharmacodynamics": model_class.get_pharmacodynamics,
+            "Mechanism": model_class.get_mechanism,
+            "Absorption": model_class.get_absorption,
+            "Half-life": model_class.get_half_life,
+            "Toxicity": model_class.get_toxicity
+        }])
 
         return csv_data
 

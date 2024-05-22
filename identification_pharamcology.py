@@ -39,7 +39,7 @@ def automation(assets, email, password):
 
     count = 0
     # Iterate over the first 10 drugs in the drug list
-    for drug in drug_list[:5]:
+    for drug in drug_list:
         count += 1
         print(f"Drug name: {drug}, index is: {count}")
         time.sleep(5)

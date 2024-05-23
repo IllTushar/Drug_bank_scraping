@@ -18,6 +18,7 @@ import math
 drug_data_list2: List[ModelClass] = []
 csv_value_list = []
 
+
 def extract_last_number_from_text(text):
     # Regular expression to find all numbers, including those with commas
     numbers = re.findall(r'\d{1,3}(?:,\d{3})*|\d+', text)
@@ -51,20 +52,25 @@ def automation(assets, email, password):
 
     read_csv_file_for_drug_name = pd.read_csv(r"C:\Users\gtush\Desktop\SayaCsv\DrugBankData.csv")
     drug_list = read_csv_file_for_drug_name['Name']
-    count = 0
-    for drug in drug_list:
+    count = 5
+    for drug in drug_list[6:11]:
         count += 1
         print(f"drug name: {drug}, index is: {count}")
         time.sleep(5)
         value = search_drug(assets, xpath, drug_data_list, drug)
-        csv_value_list.append(value)
-    # Check if csv_value is defined and not empty before using it
-    for csv_value in csv_value_list:
-        if csv_value is not None and not csv_value.empty:
-            csv_value.to_csv(fr"C:\Users\gtush\Desktop\SayaCsv\InteractionData.csv", index=False)
+        if value is not None:
+            csv_value_list.append(value)
         else:
-            print("Data not found")
+            pass
 
+    if csv_value_list:
+        result_df = pd.concat(csv_value_list, ignore_index=True)
+        if not result_df.empty:
+            result_df.to_csv(r"C:\Users\gtush\Desktop\SayaCsv\InteractionData.csv", index=False)
+        else:
+            print("No data found to write to CSV.")
+    else:
+        print("No valid data collected.")
     # Extract cookies from the browser
     cookies = assets.browser.get_cookies()
     print("Cookies:", cookies)
@@ -192,6 +198,9 @@ def search_drug(assets, xpath, drug_data_list, drug):
         return None
     except ElementClickInterceptedException:
         print("No Click able element")
+        return None
+    except StaleElementReferenceException:
+        print("StaleElementReferenceException")
         return None
     except WebDriverException:
         print("Web driver not found")

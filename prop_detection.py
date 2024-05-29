@@ -1,5 +1,12 @@
+import numpy as np
 import pandas as pd
 import spacy
+from spacy.tokenizer import Tokenizer
+from spacy.util import compile_infix_regex
+import re
+
+list_of_effect = []
+generic_list = []
 
 
 def filter_data_and_new_col(filepath):
@@ -10,81 +17,114 @@ def filter_data_and_new_col(filepath):
         print(f"Error: File not found at {filepath}")
         return None
 
+    csv_data = csv_data.head(99)
+
     # Extract Interaction and Drug columns
     interactions = csv_data['Interaction']
     drug_names = csv_data['Drug']
-    url = csv_data['Base.Drug']
 
     # Create a new empty DataFrame column to store filtered interactions
     csv_data["Filtered Interaction"] = None
 
-    for index, interaction in enumerate(interactions[:100]):
+    for index, interaction in enumerate(interactions):
         # Check if "increased" or "decreased" is present and if drug name is anywhere in the interaction
         if (("increased" in interaction or "decreased" in interaction) and drug_names.iloc[index] in interaction):
             # Remove "increased" or "decreased" and drug name from the interaction
             interaction = interaction.replace("increased", "").replace("decreased", "").replace(drug_names.iloc[index],
                                                                                                 "").strip()
             # Optional removal of verbs and prepositions using remove_proposition_and_verbs()
-            filtered_interaction = remove_proposition_and_verbs(interaction)
+            filtered_interaction = remove_propositions_and_verbs(interaction)
+            # print(f"-> {filtered_interaction},index -> {index}")
             csv_data.loc[index, "Filtered Interaction"] = filtered_interaction
 
+    csv_data['effect'] = ''
+    csv_data['base_drug'] = ''
+    print(csv_data)
+
+    # filtered_interaction_data = csv_data['Filtered Interaction'].head(n=100)
     # Print filtered interactions for debugging
-    filtered_interaction_data = csv_data['Filtered Interaction'].head(100)
-    return filtered_interaction_data
+    return csv_data
 
 
-def remove_proposition_and_verbs(interaction):
+def remove_propositions_and_verbs(interaction):
     try:
-        # Load the English model (lazy loading)
+        # Load the English model
         nlp = spacy.load('en_core_web_sm')
     except OSError:
         from spacy.cli import download
         download("en_core_web_sm")
         nlp = spacy.load("en_core_web_sm")
 
+    # Customize the tokenizer to keep "1,2-Benzodiazepine" as a single token
+    infix_re = compile_infix_regex(nlp.Defaults.infixes + [r'\b1,2-\b'])
+    nlp.tokenizer = Tokenizer(nlp.vocab, infix_finditer=infix_re.finditer)
+
     # Process the text
     doc = nlp(interaction)
 
-    # Create a list of tokens excluding verbs and prepositions
-    filtered_tokens = [token.text for token in doc if
-                       token.pos_ not in ['VERB', 'AUX', 'ADP', 'ADV', 'DET', 'PRON', 'CONJ', 'SCONJ']]
+    # Create a list of tokens excluding verbs, auxiliaries, prepositions, adverbs, determiners, pronouns, conjunctions, and subordinating conjunctions
+    filtered_tokens = [token.text_with_ws for token in doc if
+                       token.pos_ not in ['VERB', 'AUX', 'ADP', 'ADV', 'DET', 'PRON', 'CCONJ', 'SCONJ']]
 
-    # Join the filtered tokens back into a string
-    filtered_text = ' '.join(filtered_tokens)
+    # Join the filtered tokens back into a string and remove extra spaces
+    filtered_text = ''.join(filtered_tokens).strip()
+    filtered_text = re.sub(r'\s+', ' ', filtered_text)
     return filtered_text
 
 
 if __name__ == '__main__':
-    file_path = r'C:\Users\gtush\Desktop\SayaCsv\interactions_subset.csv.csv'
+    file_path = r'C:\Users\gtush\Desktop\SayaCsv\subset.csv'
+    read_interaction_subset_csv = pd.read_csv(file_path)
     filter_list = filter_data_and_new_col(file_path)
-    print(filter_list)
+    # size_data_interaction_set = len(filter_list)
+    # print(len(filter_list))
+
+    filter_list.to_csv(r'C:\Users\gtush\Desktop\SayaCsv\effect2.csv', index=False)
+
     if filter_list is None:
         print("No data found.")
     else:
         # Ensure the correct string formatting for the search
-        read_drug_bank_csv = pd.read_csv(r"C:\Users\gtush\Desktop\SayaCsv\DrugBankData.csv")
+        read_drug_bank_csv = pd.read_csv(r"C:\Users\gtush\Desktop\SayaCsv\DrugBankData1.csv")
+        drug_name = read_drug_bank_csv['Name']
+        pd_read_effect_csv = pd.read_csv(r'C:\Users\gtush\Desktop\SayaCsv\effect_list.csv')
+        effect_list = pd_read_effect_csv['effect']
 
-        for search_string in read_drug_bank_csv['Name']:
-            # Check if the exact string is in the filter_list
-            strings = search_string
-            count = 0
-            found = False
-            index = 0
-            for item in filter_list:
-                print(f"index->{index}")
-                index += 1
-                split_item = item.split(".")
-                if item and search_string in split_item[-2]:  # Ensure item is not None
-                    found = True
-                    count += 1
-                    data = item.replace(search_string, "").strip()
-                    print(f"Found and modified: {data}")
-                else:
-                    print("not happen")
+        filter_list = filter_list.reset_index()
+
+        for index, row in filter_list.iterrows():
+            if row['Filtered Interaction'] is None:
+                continue  # Skip None items
+
+            for drug_name_row in drug_name:
+                if drug_name_row in row['Filtered Interaction']:
+                    # filter_item_list = filter_item.split(drug_name_row)
+                    # print(drug_name_row + filter_item)
+                    # effect_list.append(filter_item_list[-2].strip())
+                    filter_list.loc[filter_list.index[index], 'base_drug'] = drug_name_row
+                    filter_list.loc[filter_list.index[index], 'Filtered Interaction'] = filter_list.loc[
+                        filter_list.index[index], 'Filtered Interaction'].replace(drug_name_row, ' ')
+                    print(filter_list.iloc[index])
                     break
 
-            print(count)
-            if not found:
-                print("String '1,2 - Benzodiazepine' is not present in the filter_list.")
+            for effect in effect_list:
+                if effect in row['Filtered Interaction']:
+                    filter_list.loc[filter_list.index[index], 'effect'] = effect
+                    filter_list.loc[filter_list.index[index], 'Filtered Interaction'] = filter_list.loc[
+                        filter_list.index[index], 'Filtered Interaction'].replace(effect, ' ')
+                    break
 
+        # for effect_mapping in effect_map.keys():
+        #     effect_value = effect_map.get(effect_mapping)
+        #     for filter_items in filter_list:
+        #         if effect_mapping == filter_items:
+        #             effect_list.append(effect_value)
+        #             break
 
+        # if len(effect_list) < len(filter_list):
+        #     for l in filter_list[len(effect_list):]:
+        #         effect_list.append("null")
+        # df = pd.DataFrame(
+        #     {"Drugs": read_interaction_subset_csv['Drug'], "Interactions": read_interaction_subset_csv['Interaction'],
+        #      "Effect": effect_list})
+        filter_list.to_csv(r'C:\Users\gtush\Desktop\SayaCsv\effect3.csv', index=False)

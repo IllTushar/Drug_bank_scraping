@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import spacy
 from spacy.tokenizer import Tokenizer
@@ -16,8 +15,8 @@ def filter_data_and_new_col(filepath):
     except FileNotFoundError:
         print(f"Error: File not found at {filepath}")
         return None
-
-    csv_data = csv_data.head(99)
+    #
+    csv_data = csv_data.head(n=99)
 
     # Extract Interaction and Drug columns
     interactions = csv_data['Interaction']
@@ -28,10 +27,12 @@ def filter_data_and_new_col(filepath):
 
     for index, interaction in enumerate(interactions):
         # Check if "increased" or "decreased" is present and if drug name is anywhere in the interaction
-        if (("increased" in interaction or "decreased" in interaction) and drug_names.iloc[index] in interaction):
+        if (("increased" in interaction or "decreased" in interaction or 'increase' in interaction) and drug_names.iloc[index] in interaction):
             # Remove "increased" or "decreased" and drug name from the interaction
-            interaction = interaction.replace("increased", "").replace("decreased", "").replace(drug_names.iloc[index],
-                                                                                                "").strip()
+            interaction = interaction.replace("increased", "").replace("decreased", "").replace("increase",
+                                                                                                "").replace(
+                drug_names.iloc[index],
+                "").strip()
             # Optional removal of verbs and prepositions using remove_proposition_and_verbs()
             filtered_interaction = remove_propositions_and_verbs(interaction)
             # print(f"-> {filtered_interaction},index -> {index}")
@@ -64,7 +65,8 @@ def remove_propositions_and_verbs(interaction):
 
     # Create a list of tokens excluding verbs, auxiliaries, prepositions, adverbs, determiners, pronouns, conjunctions, and subordinating conjunctions
     filtered_tokens = [token.text_with_ws for token in doc if
-                       token.pos_ not in ['VERB', 'AUX', 'ADP', 'ADV', 'DET', 'PRON', 'CCONJ', 'SCONJ']]
+                       token.pos_ not in ['VERB', 'AUX', 'ADP', 'ADV', 'DET', 'PRON', 'CCONJ', 'SCONJ'] and
+                       token.text.lower() != 'combination']
 
     # Join the filtered tokens back into a string and remove extra spaces
     filtered_text = ''.join(filtered_tokens).strip()
@@ -114,17 +116,4 @@ if __name__ == '__main__':
                         filter_list.index[index], 'Filtered Interaction'].replace(effect, ' ')
                     break
 
-        # for effect_mapping in effect_map.keys():
-        #     effect_value = effect_map.get(effect_mapping)
-        #     for filter_items in filter_list:
-        #         if effect_mapping == filter_items:
-        #             effect_list.append(effect_value)
-        #             break
-
-        # if len(effect_list) < len(filter_list):
-        #     for l in filter_list[len(effect_list):]:
-        #         effect_list.append("null")
-        # df = pd.DataFrame(
-        #     {"Drugs": read_interaction_subset_csv['Drug'], "Interactions": read_interaction_subset_csv['Interaction'],
-        #      "Effect": effect_list})
         filter_list.to_csv(r'C:\Users\gtush\Desktop\SayaCsv\effect3.csv', index=False)

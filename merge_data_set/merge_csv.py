@@ -11,7 +11,6 @@ def merge_data_set():
     concat_file.reset_index(drop=True, inplace=True)
 
     concat_file.to_csv(r'C:\Users\gtush\Desktop\csv_folder\Sample_file.csv', index=False)
-    
 
 
 if __name__ == '__main__':

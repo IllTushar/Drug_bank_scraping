@@ -2,10 +2,15 @@ import pandas as pd
 from Levenshtein import distance
 
 
-def calculate_levenshtein_distances(generic_names, drug_names, desired_similarity=70.0):
+def calculate_levenshtein_distances(generic_names, drug_data, desired_similarity=60.0):
     results = []
 
-    for drug_name in drug_names:
+    for idx, row in drug_data.iterrows():
+        drug_name = row['Modified Name']
+        drug_url = row['Drug URL']
+        split_drug_code = drug_url.split('/')
+        drug_bank_code = split_drug_code[-1].strip()
+
         # Handle empty strings
         if not drug_name:
             continue
@@ -48,17 +53,19 @@ def calculate_levenshtein_distances(generic_names, drug_names, desired_similarit
                     best_levenshtein_distance = levenshtein_distance
 
         # Only include results meeting the desired similarity threshold
-        if highest_similarity >= desired_similarity:
-            pass
-        else:
+        if highest_similarity < desired_similarity and highest_similarity < 30:
             result = {
                 "drug_name": drug_name,
                 "generic_name": most_similar_generic_name,  # Could be None
                 "salt_code": most_similar_salt_code,  # Will include salt code for identical matches
                 "levenshtein_distance": best_levenshtein_distance if most_similar_generic_name else None,
                 "similarity_percentage": highest_similarity,
+                "drug_bank_code": drug_bank_code,
+                'status': '< 30% match'
             }
             results.append(result)
+        else:
+            pass
 
     # Convert results to a DataFrame
     data_set = pd.DataFrame(results)
@@ -74,7 +81,8 @@ if __name__ == "__main__":
 
     effect_data = pd.read_csv(r"C:\Users\gtush\Desktop\SayaCsv\DrugBankData.csv")
 
-    drug_names = effect_data["Modified Name"].tolist()
+    # Ensure 'drugurl' column is in effect_data DataFrame
+    drug_names = effect_data[["Modified Name", "Drug URL"]]
 
     results = calculate_levenshtein_distances(generic_names, drug_names)
-    results.to_csv(r"C:\Users\gtush\Desktop\SayaCsv\distance_less_match.csv",index=False)
+    results.to_csv(r"C:\Users\gtush\Desktop\SayaCsv\distance_match_less_30.csv", index=False)

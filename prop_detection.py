@@ -84,7 +84,7 @@ if __name__ == '__main__':
     if filter_list is None:
         print("No data found.")
     else:
-        filter_list.to_csv(r'C:\Users\gtush\Desktop\SayaCsv\effect2.csv', index=False)
+        # filter_list.to_csv(r'C:\Users\gtush\Desktop\SayaCsv\effect2.csv', index=False)
 
         # Ensure the correct string formatting for the search
         read_drug_bank_csv = pd.read_csv(r"C:\Users\gtush\Desktop\SayaCsv\DrugBankData1.csv")

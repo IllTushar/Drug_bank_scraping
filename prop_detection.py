@@ -21,16 +21,16 @@ def load_spacy_model():
 
 def remove_propositions_and_verbs(interaction, nlp):
     doc = nlp(interaction)
-    filtered_tokens = [token.text_with_ws for token in doc if token.pos_ not in
-                       ['VERB', 'AUX', 'ADP', 'ADV', 'DET', 'PRON', 'CCONJ', 'SCONJ'] and
-                       token.text.lower() != 'combination']
+    # Keep adjectives (JJ) that might describe the effect
+    filtered_tokens = [token.text_with_ws for token in doc if token.pos_ in
+                       ['NOUN', 'ADJ'] and token.text.lower() != 'combination']
     filtered_text = ''.join(filtered_tokens).strip()
     filtered_text = re.sub(r'\s+', ' ', filtered_text)
     return filtered_text
 
 
 def process_interaction(index, interaction, drug_name, nlp):
-    keywords = ["increased", "decreased", "increase", "decrease"]
+    keywords = ["increased", "decreased", "increase", "decrease", "affect", "impact"]
     for keyword in keywords:
         if keyword in interaction and drug_name in interaction:
             interaction = interaction.replace(keyword, "").replace(drug_name, "").strip()
@@ -46,7 +46,7 @@ def filter_data_and_new_col(filepath):
         print(f"Error: File not found at {filepath}")
         return None
 
-    csv_data = csv_data.head(n=40)
+    # Process all data
     interactions = csv_data['Interaction']
     drug_names = csv_data['Drug']
     csv_data["Filtered Interaction"] = None
@@ -83,6 +83,7 @@ def update_with_drug_and_effect_info(filter_list, drug_bank_filepath, effect_lis
             continue
 
         for drug_name in drug_names:
+            # Fuzzy matching using string similarity (e.g., Levenshtein distance) can be implemented here
             if drug_name in row['Filtered Interaction']:
                 filter_list.at[index, 'base_drug'] = drug_name
                 filter_list.at[index, 'Filtered Interaction'] = filter_list.at[index, 'Filtered Interaction'].replace(

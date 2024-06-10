@@ -3,10 +3,9 @@ import spacy
 from spacy.tokenizer import Tokenizer
 from spacy.util import compile_infix_regex
 import re
-import multiprocessing as mp
 
 
-
+# Function to load or download spaCy model
 def load_spacy_model():
     try:
         nlp = spacy.load('en_core_web_sm')
@@ -20,6 +19,7 @@ def load_spacy_model():
     return nlp
 
 
+# Function to remove propositions and verbs from a given text
 def remove_propositions_and_verbs(interaction, nlp):
     doc = nlp(interaction)
     filtered_tokens = [token.text_with_ws for token in doc if token.pos_ not in
@@ -30,8 +30,8 @@ def remove_propositions_and_verbs(interaction, nlp):
     return filtered_text
 
 
-def process_interaction(args):
-    index, interaction, drug_name, nlp = args
+# Function to process each interaction and extract relevant details
+def process_interaction(index, interaction, drug_name, nlp):
     keywords = ["increased", "decreased", "increase", "decrease"]
     for keyword in keywords:
         if keyword in interaction and drug_name in interaction:
@@ -41,6 +41,7 @@ def process_interaction(args):
     return index, None, None
 
 
+# Function to load data, process interactions, and create new columns
 def filter_data_and_new_col(filepath):
     try:
         csv_data = pd.read_csv(filepath)
@@ -55,10 +56,8 @@ def filter_data_and_new_col(filepath):
 
     nlp = load_spacy_model()
 
-    with mp.Pool(processes=mp.cpu_count()) as pool:
-        results = pool.map(process_interaction,
-                           [(index, interaction, drug_names.iloc[index], nlp) for index, interaction in
-                            enumerate(interactions)])
+    results = [process_interaction(index, interaction, drug_names.iloc[index], nlp)
+               for index, interaction in enumerate(interactions)]
 
     for index, filtered_interaction, keyword in results:
         if filtered_interaction is not None:
@@ -70,12 +69,12 @@ def filter_data_and_new_col(filepath):
     return csv_data
 
 
+# Function to update the filtered list with drug and effect information
 def update_with_drug_and_effect_info(filter_list, drug_bank_filepath, effect_list_filepath):
     drug_bank_data = pd.read_csv(drug_bank_filepath)
     effect_list_data = pd.read_csv(effect_list_filepath)
-    drug_names = drug_bank_data['Name']
-    effect_list = effect_list_data['effect']
-    filter_list = filter_list.reset_index(drop=True)
+    drug_names = drug_bank_data['Name'].tolist()
+    effects = effect_list_data['effect'].tolist()
 
     for index, row in filter_list.iterrows():
         if row['Filtered Interaction'] is None:
@@ -84,15 +83,13 @@ def update_with_drug_and_effect_info(filter_list, drug_bank_filepath, effect_lis
         for drug_name in drug_names:
             if drug_name in row['Filtered Interaction']:
                 filter_list.at[index, 'base_drug'] = drug_name
-                filter_list.at[index, 'Filtered Interaction'] = filter_list.at[
-                    index, 'Filtered Interaction'].replace(drug_name, '').strip()
+                row['Filtered Interaction'] = row['Filtered Interaction'].replace(drug_name, '').strip()
                 break
 
-        for effect in effect_list:
+        for effect in effects:
             if effect in row['Filtered Interaction']:
                 filter_list.at[index, 'effect'] = effect
-                filter_list.at[index, 'Filtered Interaction'] = filter_list.at[
-                    index, 'Filtered Interaction'].replace(effect, '').strip()
+                row['Filtered Interaction'] = row['Filtered Interaction'].replace(effect, '').strip()
                 break
 
     return filter_list
@@ -106,6 +103,6 @@ if __name__ == '__main__':
     filter_list = filter_data_and_new_col(file_path)
     if filter_list is not None:
         filter_list = update_with_drug_and_effect_info(filter_list, drug_bank_filepath, effect_list_filepath)
-        filter_list.to_csv(r'C:\Users\gtush\Desktop\SayaCsv\effect3.csv', index=False)
+        filter_list.to_csv(r'C:\Users\gtush\Desktop\SayaCsv\effect_split1.csv', index=False)
     else:
         print("No data found.")

@@ -1,5 +1,5 @@
 # import pandas as pd
-#
+
 # if __name__ == '__main__':
 #     read_csv = pd.read_csv(r'C:\Users\gtush\Desktop\Splits_sets\filtered_interaction.csv')
 #     print(read_csv.columns)
@@ -32,7 +32,7 @@ if __name__ == '__main__':
         doc = nlp(sentence)
 
         # Specify the parts of speech to remove
-        pos_to_remove = {'VERB', 'AUX', 'ADP', 'ADV', 'DET', 'PRON', 'CCONJ', 'SCONJ'}
+        pos_to_remove = {'VERB', 'AUX', 'ADP', 'ADV', 'DET', 'PRON', 'CCONJ', 'SCONJ', 'PUNCT'}
 
         # Generate the cleaned sentence
         cleaned_sentence = ' '.join(

@@ -1,9 +1,9 @@
 from selenium import webdriver as wd
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
-from selenium.webdriver.chrome.service import Service
+import time
 
 
 class Assets:
@@ -44,3 +44,4 @@ class Assets:
         action = wd.ActionChains(self.browser, duration=2000)
         action.move_to_element(
             self.browser.find_element(xpath, attribute_x_path)).click().perform()
+

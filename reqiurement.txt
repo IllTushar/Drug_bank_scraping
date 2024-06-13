@@ -3,3 +3,4 @@ beautifulsoup4
 spacy
 Levenshtein
 nltk
+p2j

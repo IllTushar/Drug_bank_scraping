@@ -256,4 +256,5 @@ if __name__ == '__main__':
     # web_scraping()
     selenuim_assets = Assets()
     selenuim_assets.url()
-    automation(selenuim_assets, "gtushar697@gmail.com", "Tushar@12345")
+    # automation(selenuim_assets, "gtushar697@gmail.com", "Tushar@12345")
+    web_scraping()

@@ -81,14 +81,12 @@ def automation(assets, email, password):
                 range_of_the_element = 1
                 print(f"Total number of pages: {1}")
             else:
-                elements = int(last_b_text)
-                if elements >= 25:
-                    range_of_the_element = math.ceil(int(last_b_text) / 25)
-                    print(f"Total number of pages: {range_of_the_element}")
+                range_of_the_element = math.ceil(int(last_b_text) / 25)
+                print(f"Total number of pages: {range_of_the_element}")
 
             for l in range(1, range_of_the_element + 1):
                 time.sleep(5)
-                dataframe = web_scraping(filter_element_array[row])
+                dataframe = web_scraping(l, filter_element_array[row])
                 all_dataframes.append(dataframe)
                 next_x_path = '//*[@class = "page-item next"]'
                 try:
@@ -104,7 +102,7 @@ def automation(assets, email, password):
     return final_dataframe
 
 
-def web_scraping(filter_name):
+def web_scraping(page_number, filter_name):
     drug_name_list = []
     drug_description_list = []
     drug_url = []
@@ -114,25 +112,21 @@ def web_scraping(filter_name):
     data = None
     if filter_name == 'Approved':
         data = rq.get(
-            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={1}&nutraceutical={0}&illicit={0}&investigational={0}&withdrawn={0}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
+            f"https://go.drugbank.com/biotech_drugs?Allergenics=0&Cell+transplant+therapies=0&Gene+Therapies=0&Nucleic+Acid+Based+Therapies=0&Protein+Based+Therapies=0&Vaccines=0&approved={1}&c=name&ca=0&d=up&eu=0&experimental={0}&illicit={0}&investigational={0}&nutraceutical={0}&page={page_number}&us=0&withdrawn={0}")
     elif filter_name == 'Investigational':
         data = rq.get(
-            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={0}&nutraceutical={0}&illicit={0}&investigational={1}&withdrawn={0}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
+            f"https://go.drugbank.com/biotech_drugs?Allergenics=0&Cell+transplant+therapies=0&Gene+Therapies=0&Nucleic+Acid+Based+Therapies=0&Protein+Based+Therapies=0&Vaccines=0&approved={0}&c=name&ca=0&d=up&eu=0&experimental={0}&illicit={0}&investigational={1}&nutraceutical={0}&page={page_number}&us=0&withdrawn={0}")
     elif filter_name == 'Nutraceutical':
         data = rq.get(
-            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={1}&nutraceutical={0}&illicit={0}&investigational={0}&withdrawn={0}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
-
-    elif filter_name == 'Illicit':
-        data = rq.get(
-            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={0}&nutraceutical={0}&illicit={1}&investigational={0}&withdrawn={0}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
+            f"https://go.drugbank.com/biotech_drugs?Allergenics=0&Cell+transplant+therapies=0&Gene+Therapies=0&Nucleic+Acid+Based+Therapies=0&Protein+Based+Therapies=0&Vaccines=0&approved={0}&c=name&ca=0&d=up&eu=0&experimental={0}&illicit={0}&investigational={0}&nutraceutical={1}&page={page_number}&us=0&withdrawn={0}")
 
     elif filter_name == 'Withdrawn':
         data = rq.get(
-            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={0}&nutraceutical={0}&illicit={0}&investigational={0}&withdrawn={1}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
+            f"https://go.drugbank.com/biotech_drugs?Allergenics=0&Cell+transplant+therapies=0&Gene+Therapies=0&Nucleic+Acid+Based+Therapies=0&Protein+Based+Therapies=0&Vaccines=0&approved={0}&c=name&ca=0&d=up&eu=0&experimental={0}&illicit={0}&investigational={0}&nutraceutical={0}&page={page_number}&us=0&withdrawn={1}")
 
     elif filter_name == 'Experimental':
         data = rq.get(
-            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={0}&nutraceutical={0}&illicit={0}&investigational={0}&withdrawn={0}&experimental={1}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
+            f"https://go.drugbank.com/biotech_drugs?Allergenics=0&Cell+transplant+therapies=0&Gene+Therapies=0&Nucleic+Acid+Based+Therapies=0&Protein+Based+Therapies=0&Vaccines=0&approved={0}&c=name&ca=0&d=up&eu=0&experimental={1}&illicit={0}&investigational={0}&nutraceutical={0}&page={page_number}&us=0&withdrawn={0}")
 
     response = data.text
     soup = BeautifulSoup(response, "html.parser")

@@ -97,7 +97,7 @@ def update_with_drug_and_effect_info(filter_list, drug_bank_filepath, effect_lis
 
 if __name__ == '__main__':
     file_path = r'C:\Users\gtush\Desktop\SayaCsv\subset.csv'
-    drug_bank_filepath = r'C:\Users\gtush\Desktop\SayaCsv\DrugBankData1.csv'
+    drug_bank_filepath = r'C:\Users\gtush\Desktop\csv_folder\FinalMergeDrugBank.csv'
     effect_list_filepath = r'C:\Users\gtush\Desktop\SayaCsv\effect_list.csv'
 
     filter_list = filter_data_and_new_col(file_path)

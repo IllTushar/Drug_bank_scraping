@@ -2,6 +2,7 @@ import math
 import requests as rq
 from assets.assets import Assets
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import time
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -34,7 +35,15 @@ def automation(assets, email, password):
     assets.explict_wait(10, xpath, explore_x_path)
     assets.mouse_hover(xpath, explore_x_path)
 
-    filter_element_array = ['Investigational', 'Nutraceutical', 'Illicit', 'Withdrawn', 'Experimental']
+    time.sleep(5)
+    biotech_drug_x_path = "//*[text()= ' Biotech Drugs']"
+    assets.mouse_hover(xpath, biotech_drug_x_path)
+
+    time.sleep(2)
+    bio_filter_x_path = "//*[text()='Protein based therapies']"
+    assets.mouse_hover(xpath, bio_filter_x_path)
+
+    filter_element_array = ['Approved', 'Investigational', 'Nutraceutical', 'Withdrawn', 'Experimental']
     all_dataframes = []
     temp = None
     # Apply Filter
@@ -60,29 +69,42 @@ def automation(assets, email, password):
         apply_filter = assets.single_element_find(xpath, apply_filter_x_path)
         apply_filter.click()
 
-        # Extract page info and print the last <b> element text
-        page_info_xpath = "//div[@class='page_info']/b[last()]"
-        time.sleep(2)
-        assets.explict_wait(10, xpath, page_info_xpath)
-        last_b_element = assets.single_element_find(xpath, page_info_xpath)
-        last_b_text = last_b_element.text.replace(',', '')  # Remove any commas if present
-        range_of_the_element = math.ceil(int(last_b_text) / 25)
-        print(f"Total number of pages: {range_of_the_element}")
+        try:
+            # Extract page info and print the last <b> element text
+            page_info_xpath = "//div[@class='page_info']/b[last()]"
+            time.sleep(2)
+            assets.explict_wait(10, xpath, page_info_xpath)
+            last_b_element = assets.single_element_find(xpath, page_info_xpath)
+            last_b_text = last_b_element.text.replace(',', '')  # Remove any commas if present
+            range_of_the_element = None
+            if last_b_text == "all 17":
+                range_of_the_element = 1
+                print(f"Total number of pages: {1}")
+            else:
+                elements = int(last_b_text)
+                if elements >= 25:
+                    range_of_the_element = math.ceil(int(last_b_text) / 25)
+                    print(f"Total number of pages: {range_of_the_element}")
 
-        for l in range(1, range_of_the_element + 1):
-            time.sleep(5)
-            dataframe = web_scraping(l, filter_element_array[row])
-            all_dataframes.append(dataframe)
-            next_x_path = '//*[@class = "page-item next"]'
-            next_button = assets.single_element_find(xpath, next_x_path)
-            next_button.click()
+            for l in range(1, range_of_the_element + 1):
+                time.sleep(5)
+                dataframe = web_scraping(filter_element_array[row])
+                all_dataframes.append(dataframe)
+                next_x_path = '//*[@class = "page-item next"]'
+                try:
+                    next_button = assets.single_element_find(xpath, next_x_path)
+                    next_button.click()
+                    break
+                except NoSuchElementException:
+                    break
+        except TimeoutException:
             break
 
     final_dataframe = pd.concat(all_dataframes, ignore_index=True)
     return final_dataframe
 
 
-def web_scraping(page_number, filter_name):
+def web_scraping(filter_name):
     drug_name_list = []
     drug_description_list = []
     drug_url = []
@@ -90,24 +112,27 @@ def web_scraping(page_number, filter_name):
     drug_category = []
     group_status = []
     data = None
-    if filter_name == 'Investigational':
+    if filter_name == 'Approved':
         data = rq.get(
-            f"https://go.drugbank.com/drugs?approved=0&c=name&ca=0&d=up&eu=0&experimental={0}&illicit={0}&investigational={1}&nutraceutical={0}&page={page_number}&us=0&withdrawn={0}")
+            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={1}&nutraceutical={0}&illicit={0}&investigational={0}&withdrawn={0}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
+    elif filter_name == 'Investigational':
+        data = rq.get(
+            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={0}&nutraceutical={0}&illicit={0}&investigational={1}&withdrawn={0}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
     elif filter_name == 'Nutraceutical':
         data = rq.get(
-            f"https://go.drugbank.com/drugs?approved=0&c=name&ca=0&d=up&eu=0&experimental={0}&illicit={0}&investigational={0}&nutraceutical={1}&page={page_number}&us=0&withdrawn={0}")
+            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={1}&nutraceutical={0}&illicit={0}&investigational={0}&withdrawn={0}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
 
     elif filter_name == 'Illicit':
         data = rq.get(
-            f"https://go.drugbank.com/drugs?approved=0&c=name&ca=0&d=up&eu=0&experimental={0}&illicit={1}&investigational={0}&nutraceutical={0}&page={page_number}&us=0&withdrawn={0}")
+            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={0}&nutraceutical={0}&illicit={1}&investigational={0}&withdrawn={0}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
 
     elif filter_name == 'Withdrawn':
         data = rq.get(
-            f"https://go.drugbank.com/drugs?approved=0&c=name&ca=0&d=up&eu=0&experimental={0}&illicit={0}&investigational={0}&nutraceutical={0}&page={page_number}&us=0&withdrawn={1}")
+            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={0}&nutraceutical={0}&illicit={0}&investigational={0}&withdrawn={1}&experimental={0}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
 
     elif filter_name == 'Experimental':
         data = rq.get(
-            f"https://go.drugbank.com/drugs?approved=0&c=name&ca=0&d=up&eu=0&experimental={1}&illicit={0}&investigational={0}&nutraceutical={0}&page={page_number}&us=0&withdrawn={0}")
+            f"https://go.drugbank.com/biotech_drugs?approved=0&approved={0}&nutraceutical={0}&illicit={0}&investigational={0}&withdrawn={0}&experimental={1}&us=0&ca=0&eu=0&Protein+Based+Therapies=0&Nucleic+Acid+Based+Therapies=0&Gene+Therapies=0&Vaccines=0&Allergenics=0&Cell+transplant+therapies=0&commit=Apply+Filter")
 
     response = data.text
     soup = BeautifulSoup(response, "html.parser")
@@ -139,7 +164,7 @@ def web_scraping(page_number, filter_name):
     data_frame = pd.DataFrame(
         {"Name": drug_name_list, "Description": drug_description_list, "Drug Weight": drug_weight,
          "Drug Category": drug_category, "Drug URL": drug_url, "Group Status": group_status,
-         "Drug Group": "Small Molecule"})
+         "Drug Group": "BioTech Drugs"})
     return data_frame
 
 
@@ -147,4 +172,4 @@ if __name__ == '__main__':
     assets = Assets()
     assets.url()
     df = automation(assets, "dmg@saya.net.in", "Saya12!")
-    df.to_csv(r'C:\Users\gtush\Desktop\Splits_sets\Drug_bank2.csv', index=False)
+    df.to_csv(r'C:\Users\gtush\Desktop\csv_folder\BioTechDrug.csv', index=False)

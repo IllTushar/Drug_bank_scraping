@@ -96,13 +96,14 @@ def update_with_drug_and_effect_info(filter_list, drug_bank_filepath, effect_lis
 
 
 if __name__ == '__main__':
-    file_path = r'C:\Users\gtush\Desktop\SayaCsv\subset.csv'
-    drug_bank_filepath = r'C:\Users\gtush\Desktop\csv_folder\FinalMergeDrugBank.csv'
-    effect_list_filepath = r'C:\Users\gtush\Desktop\SayaCsv\effect_list.csv'
+    for i in range(1, 101):
+        file_path = fr'C:\Users\gtush\Desktop\SayaCsv\subset{i}.csv'
+        drug_bank_filepath = r'C:\Users\gtush\Desktop\csv_folder\FinalMergeDrugBank.csv'
+        effect_list_filepath = r'C:\Users\gtush\Desktop\SayaCsv\effect_list.csv'
 
-    filter_list = filter_data_and_new_col(file_path)
-    if filter_list is not None:
-        filter_list = update_with_drug_and_effect_info(filter_list, drug_bank_filepath, effect_list_filepath)
-        filter_list.to_csv(r'C:\Users\gtush\Desktop\SayaCsv\effect_split1.csv', index=False)
-    else:
-        print("No data found.")
+        filter_list = filter_data_and_new_col(file_path)
+        if filter_list is not None:
+            filter_list = update_with_drug_and_effect_info(filter_list, drug_bank_filepath, effect_list_filepath)
+            filter_list.to_csv(fr'C:\Users\gtush\Desktop\SayaCsv\effect_split{i}.csv', index=False)
+        else:
+            print("No data found.")

@@ -70,26 +70,30 @@ def automation(assets, email, password):
     login = assets.single_element_find(xpath, login_x_path)
     login.click()
 
-    read_csv_file_for_drug_name = pd.read_csv(r"C:\Users\gtush\Desktop\DrugBankData\DrugBankData.csv")
+    read_csv_file_for_drug_name = pd.read_csv(r"C:\Users\gtush\Desktop\NotScrap\not_scrap_data.csv")
 
     for index, base_drug in read_csv_file_for_drug_name.iterrows():
-        if 0 <= index <= 551:
-            drug_data_list: List[ModelClass] = []
-            base_drug_code = base_drug['Drug URL']
-            splits_code = base_drug_code.split("/")[-1]
-            print(f"drug name: {base_drug['Name']}, index is: {index}")
-            time.sleep(2)
-            value = search_drug(assets, xpath, drug_data_list, base_drug, index, read_csv_file_for_drug_name)
-            if value is not None:
-                df = pd.DataFrame()  # for clear the dataframe
-                df = pd.DataFrame(value)  # for create a new dataframe
-                df.to_csv(fr"C:\Users\gtush\Desktop\DataCollection\{splits_code}.csv", index=False)
-                print(fr"C:\Users\gtush\Desktop\DataCollection\{splits_code}.csv")
-                # Explicitly clearing the DataFrame
+        drug_data_list: List[ModelClass] = []
+        base_drug_code = base_drug['Drug URL']
+        splits_code = base_drug_code.split("/")[-1]
+        print(f"drug name: {base_drug['Name']}, index is: {index}")
+        time.sleep(5)
+        value, status = search_drug(assets, xpath, drug_data_list, base_drug, index, read_csv_file_for_drug_name)
+        if value is not None:
+            df = pd.DataFrame()  # for clear the dataframe
+            df = pd.DataFrame(value)  # for create a new dataframe
+            df.to_csv(fr"C:\Users\gtush\Desktop\Collection_2\{splits_code}.csv", index=False)
+            print(fr"C:\Users\gtush\Desktop\Collection_2\{splits_code}.csv")
+            # Explicitly clearing the DataFrame
+            if status == 'INT':  ## INT -> Interaction in
+                # Update the status in the DataFrame
+                read_csv_file_for_drug_name.at[index, 'Extract'] = status
+                read_csv_file_for_drug_name.to_csv(r"C:\Users\gtush\Desktop\NotScrap\not_scrap_data.csv", index=False)
+            else:
                 status = 'T'
                 # Update the status in the DataFrame
                 read_csv_file_for_drug_name.at[index, 'Extract'] = status
-                read_csv_file_for_drug_name.to_csv(r"C:\Users\gtush\Desktop\DrugBankData\DrugBankData.csv", index=False)
+                read_csv_file_for_drug_name.to_csv(r"C:\Users\gtush\Desktop\NotScrap\not_scrap_data.csv", index=False)
 
 
 def drug_and_interactions(assets):
@@ -168,16 +172,28 @@ def search_drug(assets, xpath, drug_data_list, base_drug, index, read_csv_file_f
 
             select_x_path_next_page = "//*[@id = 'drug-interactions-table_next']"
 
-            # Wait for the next page button to be clickable
-            try:
-                assets.explict_wait(3, xpath, select_x_path_next_page)
-                next_page_button = assets.single_element_find(xpath, select_x_path_next_page)
-                next_page_button.click()
-            except StaleElementReferenceException:
-                print("Stale element reference exception occurred. Retrying...")
-                assets.explict_wait(3, xpath, select_x_path_next_page)
-                next_page_button = assets.single_element_find(xpath, select_x_path_next_page)
-                next_page_button.click()
+            # Retry mechanism for the next page button
+            retry_count = 3  # Number of retry attempts
+            for attempt in range(retry_count):
+                try:
+                    # Scroll the next page button into view
+                    next_page_button = assets.single_element_find(xpath, select_x_path_next_page)
+                    next_page_button.click()
+                    original_scroll_position = assets.driver.execute_script("return window.pageYOffset;")
+                    assets.driver.execute_script("arguments[0].scrollIntoView(true);", next_page_button)
+                    # Adding a short delay to ensure the element is in view
+                    time.sleep(1)  # Short delay to allow the action to take effect
+                    assets.driver.execute_script(f"window.scrollTo(0, {original_scroll_position});")
+                    status = 'T'
+                    break  # If successful, exit the retry loop
+                except StaleElementReferenceException:
+                    print(f"Stale element reference exception occurred on attempt {attempt + 1}. Retrying...")
+                    time.sleep(1)  # Adding a short delay before retrying
+                    status = 'INT'
+                except Exception as e:
+                    print(f"An error occurred on attempt {attempt + 1}: {e}")
+                    status = 'INT'
+                    time.sleep(1)  # Adding a short delay before retrying
 
         print(len(drug_data_list))
         drug_data_rows = []
@@ -187,7 +203,7 @@ def search_drug(assets, xpath, drug_data_list, base_drug, index, read_csv_file_f
                     {"Drug": drug, "Interaction": interaction, "URL": url, "Base Drug": name_of_base_drug,
                      "Base_Drug URL": base_drug_url})
 
-        return drug_data_rows
+        return drug_data_rows, status
 
     except TimeoutException:
         status = 'TL'
@@ -198,16 +214,25 @@ def search_drug(assets, xpath, drug_data_list, base_drug, index, read_csv_file_f
     except NoSuchElementException:
         status = 'N'
         read_csv_file_for_drug_name.at[index, 'Extract'] = status
-        read_csv_file_for_drug_name.to_csv(r"C:\Users\gtush\Desktop\DrugBankData\DrugBankData.csv", index=False)
+        read_csv_file_for_drug_name.to_csv(r"C:\Users\gtush\Desktop\NotScrap\not_scrap_data.csv", index=False)
         print("No element found")
         return None
     except ElementClickInterceptedException:
+        status = 'EN'
+        read_csv_file_for_drug_name.at[index, 'Extract'] = status
+        read_csv_file_for_drug_name.to_csv(r"C:\Users\gtush\Desktop\NotScrap\not_scrap_data.csv", index=False)
         print("Element click intercepted.")
         return None
     except StaleElementReferenceException:
+        status = 'SE'
+        read_csv_file_for_drug_name.at[index, 'Extract'] = status
+        read_csv_file_for_drug_name.to_csv(r"C:\Users\gtush\Desktop\DrugBankData\DrugBankData.csv", index=False)
         print("StaleElementReferenceException.")
         return None
     except WebDriverException:
+        status = 'WD'
+        read_csv_file_for_drug_name.at[index, 'Extract'] = status
+        read_csv_file_for_drug_name.to_csv(r"C:\Users\gtush\Desktop\DrugBankData\DrugBankData.csv", index=False)
         print("Web driver not found.")
         return None
 

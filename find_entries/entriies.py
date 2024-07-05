@@ -58,22 +58,23 @@ def automation(assets, email, password):
     login = assets.single_element_find(xpath, login_x_path)
     login.click()
 
-    read_csv_file_for_drug_name = pd.read_csv(r"C:\Users\gtush\Desktop\NotScrap\not_scrap_data.csv")
+    read_csv_file_for_drug_name = pd.read_csv(r"C:\Users\gtush\Desktop\DrugBankScraping\DataSetPresent_N_2.csv")
 
     for index, base_drug in read_csv_file_for_drug_name.iterrows():
         drug_data_list: List[ModelClass] = []
-
-        print(f"drug name: {base_drug['Name']}, index is: {index}")
-        time.sleep(5)
-        value = search_drug(assets, xpath, drug_data_list, base_drug, index, read_csv_file_for_drug_name)
-        if value is not None:
-            read_csv_file_for_drug_name.at[index, 'Entries'] = value
-            read_csv_file_for_drug_name.to_csv(r'C:\Users\gtush\Desktop\NotScrap\not_scrap_data.csv', index=False)
+        if 459 <= index <= 606:
+            print(f"drug name: {base_drug['Name']}, index is: {index}")
+            time.sleep(5)
+            value = search_drug(assets, xpath, drug_data_list, base_drug, index, read_csv_file_for_drug_name)
+            if value is not None:
+                read_csv_file_for_drug_name.at[index, 'Entries'] = value
+                read_csv_file_for_drug_name.to_csv(r'C:\Users\gtush\Desktop\DrugBankScraping\DataSetPresent_N_2.csv',
+                                                   index=False)
 
 
 def search_drug(assets, xpath, drug_data_list, base_drug, index, read_csv_file_for_drug_name):
     status = None
-    file_path = r'C:\Users\gtush\Desktop\NotScrap\not_scrap_data.csv'
+    file_path = r'C:\Users\gtush\Desktop\DrugBankScraping\DataSetPresent_N_2.csv'
     # Search Bar
     name_of_base_drug = base_drug['Name']
     base_drug_url = base_drug['Drug URL']
